@@ -1,0 +1,68 @@
+alias: Earthquake Alerts - USGS threshold notification
+description: >-
+  Create a persistent notification when a new native USGS geo-location entity
+  meets the MMM-EarthquakeAlerts default distance and magnitude bands.
+mode: parallel
+max: 20
+
+triggers:
+  - trigger: event
+    event_type: state_changed
+
+conditions:
+  - condition: template
+    alias: New or newly qualifying USGS earthquake
+    value_template: >-
+      {% set new = trigger.event.data.new_state %}
+      {% set old = trigger.event.data.old_state %}
+      {% if new is none
+            or not new.entity_id.startswith('geo_location.')
+            or new.attributes.source != 'usgs_earthquakes_feed'
+            or new.attributes.type != 'earthquake' %}
+        false
+      {% else %}
+        {% set mag = new.attributes.magnitude | float(0) %}
+        {% set km = new.state | float(99999) %}
+        {% set matches =
+          (mag >= 2.5 and km <= 16.0934)
+          or (mag >= 4.0 and km <= 96.5606)
+          or (mag >= 5.5 and km <= 482.803)
+          or mag >= 7.0 %}
+        {% if old is none %}
+          {{ matches }}
+        {% else %}
+          {% set old_mag = old.attributes.magnitude | float(0) %}
+          {% set old_km = old.state | float(99999) %}
+          {% set old_matches =
+            (old_mag >= 2.5 and old_km <= 16.0934)
+            or (old_mag >= 4.0 and old_km <= 96.5606)
+            or (old_mag >= 5.5 and old_km <= 482.803)
+            or old_mag >= 7.0 %}
+          {{ matches and not old_matches }}
+        {% endif %}
+      {% endif %}
+
+actions:
+  - variables:
+      quake: "{{ trigger.event.data.new_state }}"
+      magnitude: "{{ quake.attributes.magnitude | float(0) | round(1) }}"
+      distance_km: "{{ quake.state | float(0) | round(0) }}"
+      place: "{{ quake.attributes.place | default(quake.name, true) }}"
+      event_id: "{{ quake.attributes.external_id | default(quake.entity_id, true) }}"
+
+  - action: persistent_notification.create
+    data:
+      notification_id: "earthquake_{{ event_id | slugify }}"
+      title: "Earthquake alert · M{{ magnitude }}"
+      message: >-
+        M{{ magnitude }} earthquake near {{ place }}.
+        Distance: {{ distance_km }} km.
+        Status: {{ quake.attributes.status | default('unknown') }}.
+
+  # Optional mobile notification example:
+  # - action: notify.mobile_app_your_phone
+  #   data:
+  #     title: "Earthquake alert · M{{ magnitude }}"
+  #     message: "{{ place }} · {{ distance_km }} km away"
+  #     data:
+  #       tag: "earthquake_{{ event_id | slugify }}"

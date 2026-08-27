@@ -1,0 +1,27 @@
+type: custom:earthquake-alert-card
+title: Earthquake Alerts
+data_source: auto
+distance_unit: mi
+hours: 24
+max_items: 8
+update_interval: 5
+show_depth: true
+show_source: true
+animate: true
+width: 100%
+max_width: 900px
+locations:
+  # Locations are evaluated in order, matching MMM-EarthquakeAlerts.
+  - name: Home
+    latitude: 37.7749
+    longitude: -122.4194
+thresholds:
+  - minimum_magnitude: 2.5
+    maximum_distance: 10
+  - minimum_magnitude: 4
+    maximum_distance: 60
+  - minimum_magnitude: 5.5
+    maximum_distance: 300
+  # Omit maximum_distance to make the final band worldwide.
+  - minimum_magnitude: 7
+

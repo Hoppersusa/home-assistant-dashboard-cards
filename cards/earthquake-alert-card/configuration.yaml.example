@@ -1,0 +1,11 @@
+# Optional: expose the USGS past-day M2.5+ feed as Home Assistant
+# geo_location entities. The card's `auto` source uses these entities when
+# they exist and otherwise retrieves the same official USGS GeoJSON feed.
+geo_location:
+  - platform: usgs_earthquakes_feed
+    feed_type: past_day_m25_earthquakes
+    minimum_magnitude: 2.5
+    # Approximately half Earth's circumference, so the M7 worldwide rule
+    # can be evaluated by the card and companion automation.
+    radius: 20050
+

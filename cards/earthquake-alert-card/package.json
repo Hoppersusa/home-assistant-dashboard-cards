@@ -1,0 +1,24 @@
+{
+  "name": "earthquake-alert-card",
+  "version": "1.0.0",
+  "description": "A Home Assistant Lovelace card for location-aware USGS earthquake alerts.",
+  "type": "module",
+  "main": "earthquake-alert-card.js",
+  "files": [
+    "earthquake-alert-card.js",
+    "automation-earthquake-alerts.yaml",
+    "README.md",
+    "preview.svg",
+    "LICENSE",
+    "UPSTREAM-LICENSE.md",
+    "hacs.json"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "home-assistant",
+    "lovelace",
+    "earthquake",
+    "usgs",
+    "geolocation"
+  ]
+}

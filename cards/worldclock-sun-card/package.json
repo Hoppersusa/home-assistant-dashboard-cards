@@ -1,0 +1,23 @@
+{
+  "name": "worldclock-sun-card",
+  "version": "1.4.2",
+  "description": "A Home Assistant world clock card with local dates and location-aware sun or moon icons.",
+  "type": "module",
+  "main": "worldclock-sun-card.js",
+  "files": [
+    "worldclock-sun-card.js",
+    "README.md",
+    "LICENSE",
+    "FLAG-ICONS-LICENSE",
+    "flags",
+    "hacs.json"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "home-assistant",
+    "lovelace",
+    "worldclock",
+    "sunrise",
+    "sunset"
+  ]
+}
