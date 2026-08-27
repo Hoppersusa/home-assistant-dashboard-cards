@@ -21,3 +21,19 @@ Open the README inside the package you want to install. Most frontend packages a
 ## Disclaimer
 
 These are community dashboard components and are not official Home Assistant integrations. Earthquake information is informational and must not be used as a substitute for official emergency alerts.
+
+## Install with HACS
+
+1. Open HACS in Home Assistant.
+2. Open the three-dot menu and select **Custom repositories**.
+3. Add `https://github.com/Hoppersusa/home-assistant-dashboard-cards` with category **Dashboard**.
+4. Download **Home Assistant Dashboard Cards** and refresh the browser.
+
+HACS installs the bundle resource at:
+
+```text
+/hacsfiles/home-assistant-dashboard-cards/home-assistant-dashboard-cards.js
+```
+
+The bundle registers all five frontend cards. The TeamSpeak backend integration is published separately at [Hoppersusa/teamspeak3-monitor](https://github.com/Hoppersusa/teamspeak3-monitor).
+
