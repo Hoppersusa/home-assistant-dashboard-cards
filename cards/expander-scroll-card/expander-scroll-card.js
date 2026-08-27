@@ -12,7 +12,7 @@
 
 const CARD_TAG = "expander-scroll-card";
 const EDITOR_TAG = "expander-scroll-card-editor";
-const VERSION = "1.0.5";
+const VERSION = "1.2.2";
 
 const DEFAULT_CONFIG = Object.freeze({
   title: "Expander",
@@ -24,6 +24,7 @@ const DEFAULT_CONFIG = Object.freeze({
   "button-background": "transparent",
   gap: "0.6em",
   padding: "1em",
+  "top-padding": "0px",
   "child-padding": "0.5em",
   "title-card-padding": "0px",
   "title-card-button-overlay": false,
@@ -66,6 +67,7 @@ function normalizeConfig(config) {
   const collapsedScroll = config["collapsed-scroll"] ?? config.collapsed_scroll;
   const cardWidth = config["card-width"] ?? config.card_width ?? config.width;
   const maxWidth = config["max-width"] ?? config.max_width;
+  const topPadding = config["top-padding"] ?? config.top_padding ?? config["header-top-padding"];
 
   return {
     ...DEFAULT_CONFIG,
@@ -93,6 +95,7 @@ function normalizeConfig(config) {
         : cssLength(maxWidth, DEFAULT_CONFIG["max-width"]),
     gap: cssLength(config.gap, DEFAULT_CONFIG.gap),
     padding: cssLength(config.padding, DEFAULT_CONFIG.padding),
+    "top-padding": cssLength(topPadding, DEFAULT_CONFIG["top-padding"]),
     "child-padding": cssLength(config["child-padding"], DEFAULT_CONFIG["child-padding"]),
     "title-card-padding": cssLength(config["title-card-padding"], DEFAULT_CONFIG["title-card-padding"]),
     "overlay-margin": cssLength(config["overlay-margin"], DEFAULT_CONFIG["overlay-margin"]),
@@ -124,7 +127,6 @@ class ExpanderScrollCard extends HTMLElement {
   static getStubConfig() {
     return {
       title: "Expander",
-      icon: "mdi:chevron-down",
       "collapsed-min-height": "0px",
       "collapsed-scroll": false,
       cards: [{ type: "entities", entities: [] }],
@@ -227,6 +229,7 @@ class ExpanderScrollCard extends HTMLElement {
           display: block;
           width: 100%;
           padding: var(--expander-padding);
+          padding-top: var(--expander-top-padding);
           overflow: visible;
           transition: background var(--expander-duration) ease, border-color var(--expander-duration) ease;
         }
@@ -382,6 +385,7 @@ class ExpanderScrollCard extends HTMLElement {
     this.style.setProperty("--expander-card-width", config["card-width"]);
     this.style.setProperty("--expander-max-width", config["max-width"]);
     this.style.setProperty("--expander-padding", config.padding);
+    this.style.setProperty("--expander-top-padding", config["top-padding"]);
     this.style.setProperty("--expander-gap", config.gap);
     this.style.setProperty("--child-padding", config["child-padding"]);
     this.style.setProperty("--collapsed-min-height", config["collapsed-min-height"]);
@@ -722,7 +726,681 @@ class ExpanderScrollCardEditor extends HTMLElement {
   }
 }
 
-if (!customElements.get(EDITOR_TAG)) customElements.define(EDITOR_TAG, ExpanderScrollCardEditor);
+class ExpanderScrollCardNativeEditor extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+    this._config = ExpanderScrollCard.getStubConfig();
+    this._hass = null;
+    this._lovelace = null;
+    this._selectedTab = 0;
+    this._selectedCard = 0;
+    this._showTitleCardPicker = false;
+    this._showAddCardPicker = false;
+
+    this.shadowRoot.addEventListener("input", (event) => this._handleField(event));
+    this.shadowRoot.addEventListener("change", (event) => this._handleField(event));
+    this.shadowRoot.addEventListener("click", (event) => this._handleAction(event));
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._syncHomeAssistantElements();
+  }
+
+  set lovelace(lovelace) {
+    this._lovelace = lovelace;
+    this._syncHomeAssistantElements();
+  }
+
+  setConfig(config) {
+    const hasActiveElement = Boolean(this.shadowRoot.activeElement);
+    this._config = cloneConfig(config || ExpanderScrollCard.getStubConfig());
+    if (!Array.isArray(this._config.cards)) this._config.cards = [];
+    this._selectedCard = Math.max(0, Math.min(this._selectedCard, this._config.cards.length - 1));
+
+    if (!hasActiveElement) {
+      this._render();
+    } else {
+      this._syncHomeAssistantElements();
+    }
+  }
+
+  _emit() {
+    this.dispatchEvent(
+      new CustomEvent("config-changed", {
+        detail: { config: cloneConfig(this._config) },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  _handleField(event) {
+    const target = event.composedPath().find((element) => element?.dataset?.field);
+    if (!target) return;
+
+    const field = target.dataset.field;
+    const isSwitch = target.localName === "ha-switch";
+    if (isSwitch && event.type !== "change" && event.type !== "input") return;
+    if (!isSwitch && event.type !== "input" && event.type !== "change") return;
+
+    const value = isSwitch ? Boolean(target.checked) : target.value;
+    const current = this._config[field];
+    if (current === value) return;
+
+    if (!isSwitch && value === "" && field !== "title") {
+      delete this._config[field];
+    } else {
+      this._config[field] = value;
+    }
+    this._emit();
+    if (field === "title-card-button-overlay") {
+      this._render();
+    }
+  }
+
+  _handleAction(event) {
+    const control = event.composedPath().find((element) => element?.dataset?.action);
+    if (!control) return;
+    const action = control.dataset.action;
+
+    if (action === "open-title-picker") {
+      this._showTitleCardPicker = true;
+      this._render();
+      return;
+    }
+    if (action === "cancel-title-picker") {
+      this._showTitleCardPicker = false;
+      this._render();
+      return;
+    }
+    if (action === "remove-title-card") {
+      delete this._config["title-card"];
+      delete this._config["title-card-padding"];
+      delete this._config["title-card-button-overlay"];
+      delete this._config["overlay-margin"];
+      this._showTitleCardPicker = false;
+      this._emit();
+      this._render();
+      return;
+    }
+    if (action === "open-card-picker") {
+      this._showAddCardPicker = true;
+      this._render();
+      return;
+    }
+    if (action === "cancel-card-picker") {
+      this._showAddCardPicker = false;
+      this._render();
+      return;
+    }
+    if (action === "remove-card") {
+      this._config.cards.splice(this._selectedCard, 1);
+      this._selectedCard = Math.max(0, Math.min(this._selectedCard, this._config.cards.length - 1));
+      this._emit();
+      this._render();
+      return;
+    }
+    if (action === "move-card-up" && this._selectedCard > 0) {
+      const index = this._selectedCard;
+      [this._config.cards[index - 1], this._config.cards[index]] = [
+        this._config.cards[index],
+        this._config.cards[index - 1],
+      ];
+      this._selectedCard -= 1;
+      this._emit();
+      this._render();
+      return;
+    }
+    if (action === "move-card-down" && this._selectedCard < this._config.cards.length - 1) {
+      const index = this._selectedCard;
+      [this._config.cards[index + 1], this._config.cards[index]] = [
+        this._config.cards[index],
+        this._config.cards[index + 1],
+      ];
+      this._selectedCard += 1;
+      this._emit();
+      this._render();
+    }
+  }
+
+  _render() {
+    const config = normalizeConfig(this._config);
+    const textField = (field, label, helper = "") => {
+      const value = this._config[field] ?? config[field] ?? "";
+      return `<div class="field">
+        <ha-textfield data-field="${field}" label="${escapeHtml(label)}" value="${escapeHtml(value)}"></ha-textfield>
+        ${helper ? `<div class="helper">${escapeHtml(helper)}</div>` : ""}
+      </div>`;
+    };
+    const switchField = (field, label) => `
+      <ha-formfield label="${escapeHtml(label)}">
+        <ha-switch data-field="${field}" ${config[field] ? "checked" : ""}></ha-switch>
+      </ha-formfield>`;
+
+    const titleCardType = this._config["title-card"]?.type || "";
+    const childTabs = this._config.cards
+      .map(
+        (card, index) =>
+          `<paper-tab class="${index === this._selectedCard ? "tab-selected" : ""}" title="${escapeHtml(
+            card.type || `Card ${index + 1}`,
+          )}">${index + 1}</paper-tab>`,
+      )
+      .join("");
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host {
+          display: block;
+          color: var(--primary-text-color);
+          font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif);
+        }
+        * { box-sizing: border-box; }
+        paper-tabs {
+          width: 100%;
+          color: var(--primary-text-color);
+          border-bottom: 1px solid var(--divider-color);
+          --paper-tabs-selection-bar-color: var(--primary-color);
+        }
+        paper-tab { min-width: 54px; }
+        .tab-selected { color: var(--primary-color); background: color-mix(in srgb, var(--primary-color) 7%, transparent); }
+        .content {
+          display: grid;
+          gap: 16px;
+          width: 100%;
+          padding-top: 16px;
+        }
+        .section {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+        }
+        .section-title {
+          grid-column: 1 / -1;
+          margin: 4px 0 -2px;
+          color: var(--primary-text-color);
+          font-size: 14px;
+          font-weight: 600;
+        }
+        .wide { grid-column: 1 / -1; }
+        .field { display: grid; gap: 4px; min-width: 0; }
+        ha-textfield { width: 100%; }
+        ha-formfield {
+          min-height: 48px;
+          color: var(--primary-text-color);
+          --mdc-theme-text-primary-on-background: var(--primary-text-color);
+        }
+        .helper {
+          padding-inline: 4px;
+          color: var(--secondary-text-color);
+          font-size: 11px;
+          line-height: 1.35;
+        }
+        .native-note {
+          grid-column: 1 / -1;
+          padding: 10px 12px;
+          border-radius: 9px;
+          color: var(--secondary-text-color);
+          background: color-mix(in srgb, var(--primary-color) 7%, transparent);
+          font-size: 12px;
+          line-height: 1.45;
+        }
+        .row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+          min-width: 0;
+        }
+        .row ha-textfield { flex: 1 1 auto; min-width: 0; }
+        ha-icon-button { flex: 0 0 auto; color: var(--secondary-text-color); }
+        .sub-panel {
+          grid-column: 1 / -1;
+          min-width: 0;
+          padding: 14px;
+          border: 1px solid var(--divider-color);
+          border-radius: var(--ha-card-border-radius, 12px);
+          background: color-mix(in srgb, var(--card-background-color) 96%, var(--primary-text-color));
+        }
+        .panel-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          margin-bottom: 12px;
+        }
+        .panel-title {
+          min-width: 0;
+          overflow: hidden;
+          font-size: 13px;
+          font-weight: 600;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .toolbar-actions { display: flex; align-items: center; gap: 2px; }
+        .card-tab-row { display: flex; align-items: stretch; width: 100%; min-width: 0; }
+        .card-tab-row paper-tabs { flex: 1 1 auto; min-width: 0; }
+        .card-tab-row ha-icon-button { align-self: center; margin-inline-start: 4px; }
+        .empty {
+          padding: 28px 14px;
+          color: var(--secondary-text-color);
+          text-align: center;
+        }
+        mwc-button[destructive] { --mdc-theme-primary: var(--error-color); }
+        @media (max-width: 520px) {
+          .section { grid-template-columns: 1fr; }
+          .section-title, .wide, .native-note, .sub-panel { grid-column: auto; }
+        }
+      </style>
+
+      <paper-tabs id="main-tabs" scrollable selected="${this._selectedTab}">
+        <paper-tab class="${this._selectedTab === 0 ? "tab-selected" : ""}">Layout</paper-tab>
+        <paper-tab class="${this._selectedTab === 1 ? "tab-selected" : ""}">Cards</paper-tab>
+      </paper-tabs>
+
+      ${this._selectedTab === 0 ? `
+        <div class="content">
+          <div class="section">
+            <div class="section-title">Header and behavior</div>
+            <div class="wide">${textField("title", "Title", "Not displayed when a title card is configured.")}</div>
+            ${textField("icon", "Toggle icon", "Leave blank to use the rotating mdi:chevron-down icon.")}
+            ${textField("icon-rotate-degree", "Default chevron rotation", "Applied only when no custom icon is specified.")}
+            ${switchField("expanded", "Start expanded")}
+            ${textField("expand-id", "LocalStorage ID", "Saves expanded/collapsed state in this browser.")}
+          </div>
+
+          <div class="section">
+            <div class="section-title">Collapsed preview</div>
+            ${textField("collapsed-min-height", "Collapsed minimum height", "Examples: 0px, 120px, 30vh.")}
+            ${textField("transition-duration", "Animation duration", "Example: 0.5s.")}
+            ${switchField("collapsed-scroll", "Scroll content while collapsed")}
+          </div>
+
+          <div class="section">
+            <div class="section-title">Appearance and sizing</div>
+            ${switchField("clear", "Remove card background")}
+            ${switchField("clear-children", "Remove child card backgrounds/borders")}
+            ${textField("button-background", "Button background", "Any CSS color.")}
+            ${textField("gap", "Gap between cards")}
+            ${textField("padding", "Padding of all card content")}
+            ${textField("top-padding", "Space above title", "Use 0px to remove the top inset.")}
+            ${textField("child-padding", "Padding of child cards")}
+            ${textField("card-width", "Card width", "Capped to the available mobile width.")}
+            ${textField("max-width", "Maximum width")}
+            <div class="native-note">Visibility and Sections layout are configured with Home Assistant's native Visibility and Layout controls in the card dialog.</div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Title card</div>
+            <div class="row wide">
+              <ha-textfield label="Title card" value="${escapeHtml(titleCardType)}" readonly></ha-textfield>
+              <ha-icon-button data-action="open-title-picker" title="${titleCardType ? "Replace title card" : "Add title card"}" aria-label="${titleCardType ? "Replace title card" : "Add title card"}">
+                <ha-icon icon="${titleCardType ? "mdi:refresh" : "mdi:plus"}"></ha-icon>
+              </ha-icon-button>
+              ${titleCardType ? `<ha-icon-button data-action="remove-title-card" title="Remove title card" aria-label="Remove title card"><ha-icon icon="mdi:close"></ha-icon></ha-icon-button>` : ""}
+            </div>
+            ${this._showTitleCardPicker ? `
+              <div class="sub-panel">
+                <div class="panel-toolbar"><span class="panel-title">Choose title card</span><mwc-button data-action="cancel-title-picker">Cancel</mwc-button></div>
+                <hui-card-picker id="title-card-picker"></hui-card-picker>
+              </div>`
+              : titleCardType ? `
+              <div class="sub-panel">
+                <hui-card-element-editor id="title-card-editor"></hui-card-element-editor>
+              </div>
+              ${textField("title-card-padding", "Title card padding")}
+              ${switchField("title-card-button-overlay", "Expand button as overlay on title card")}
+              ${config["title-card-button-overlay"] ? textField("overlay-margin", "Overlay button margin") : ""}
+              ` : ""}
+          </div>
+        </div>
+      ` : `
+        <div class="content">
+          <div class="card-tab-row">
+            <paper-tabs id="card-tabs" scrollable selected="${this._selectedCard}">${childTabs}</paper-tabs>
+            <ha-icon-button data-action="open-card-picker" title="Add card" aria-label="Add card"><ha-icon icon="mdi:plus"></ha-icon></ha-icon-button>
+          </div>
+          ${this._showAddCardPicker ? `
+            <div class="sub-panel">
+              <div class="panel-toolbar"><span class="panel-title">Choose a card</span><mwc-button data-action="cancel-card-picker">Cancel</mwc-button></div>
+              <hui-card-picker id="child-card-picker"></hui-card-picker>
+            </div>
+          ` : this._config.cards.length ? `
+            <div class="sub-panel">
+              <div class="panel-toolbar">
+                <span class="panel-title">Card ${this._selectedCard + 1}: ${escapeHtml(this._config.cards[this._selectedCard]?.type || "unknown")}</span>
+                <div class="toolbar-actions">
+                  <ha-icon-button data-action="move-card-up" title="Move card up" aria-label="Move card up" ${this._selectedCard === 0 ? "disabled" : ""}><ha-icon icon="mdi:arrow-up"></ha-icon></ha-icon-button>
+                  <ha-icon-button data-action="move-card-down" title="Move card down" aria-label="Move card down" ${this._selectedCard === this._config.cards.length - 1 ? "disabled" : ""}><ha-icon icon="mdi:arrow-down"></ha-icon></ha-icon-button>
+                  <mwc-button destructive data-action="remove-card">Remove</mwc-button>
+                </div>
+              </div>
+              <hui-card-element-editor id="child-card-editor"></hui-card-element-editor>
+            </div>
+          ` : `<div class="empty">No child cards configured. Use + to add one.</div>`}
+        </div>
+      `}
+    `;
+
+    this.shadowRoot.querySelectorAll("ha-textfield[data-field]").forEach((field) => {
+      field.value = this._config[field.dataset.field] ?? config[field.dataset.field] ?? "";
+    });
+    this.shadowRoot.querySelectorAll("ha-switch[data-field]").forEach((field) => {
+      field.checked = config[field.dataset.field] === true;
+    });
+
+    this._bindTabs();
+    this._mountCardTools();
+  }
+
+  _bindTabs() {
+    const mainTabs = this.shadowRoot.querySelector("#main-tabs");
+    if (mainTabs) mainTabs.selected = this._selectedTab;
+    mainTabs?.addEventListener("iron-activate", (event) => {
+      const selected = Number(event.detail?.selected ?? 0);
+      if (selected === this._selectedTab) return;
+      this._selectedTab = selected;
+      this._showTitleCardPicker = false;
+      this._showAddCardPicker = false;
+      this._render();
+    });
+
+    const cardTabs = this.shadowRoot.querySelector("#card-tabs");
+    if (cardTabs) cardTabs.selected = this._selectedCard;
+    cardTabs?.addEventListener("iron-activate", (event) => {
+      const selected = Number(event.detail?.selected ?? 0);
+      if (!Number.isFinite(selected) || selected === this._selectedCard) return;
+      this._selectedCard = Math.max(0, Math.min(selected, this._config.cards.length - 1));
+      this._render();
+    });
+  }
+
+  _mountCardTools() {
+    const bindCommon = (element) => {
+      if (!element) return;
+      element.hass = this._hass;
+      element.lovelace = this._lovelace;
+    };
+
+    const titlePicker = this.shadowRoot.querySelector("#title-card-picker");
+    bindCommon(titlePicker);
+    titlePicker?.addEventListener("config-changed", (event) => {
+      event.stopPropagation();
+      this._config["title-card"] = cloneConfig(event.detail.config);
+      this._showTitleCardPicker = false;
+      this._emit();
+      this._render();
+    });
+
+    const childPicker = this.shadowRoot.querySelector("#child-card-picker");
+    bindCommon(childPicker);
+    childPicker?.addEventListener("config-changed", (event) => {
+      event.stopPropagation();
+      this._config.cards.push(cloneConfig(event.detail.config));
+      this._selectedCard = this._config.cards.length - 1;
+      this._showAddCardPicker = false;
+      this._emit();
+      this._render();
+    });
+
+    const titleEditor = this.shadowRoot.querySelector("#title-card-editor");
+    bindCommon(titleEditor);
+    if (titleEditor) {
+      titleEditor.value = this._config["title-card"];
+      titleEditor.addEventListener("config-changed", (event) => {
+        event.stopPropagation();
+        this._config["title-card"] = cloneConfig(event.detail.config);
+        this._emit();
+      });
+    }
+
+    const childEditor = this.shadowRoot.querySelector("#child-card-editor");
+    bindCommon(childEditor);
+    if (childEditor && this._config.cards[this._selectedCard]) {
+      childEditor.value = this._config.cards[this._selectedCard];
+      childEditor.addEventListener("config-changed", (event) => {
+        event.stopPropagation();
+        this._config.cards[this._selectedCard] = cloneConfig(event.detail.config);
+        this._emit();
+      });
+    }
+  }
+
+  _syncHomeAssistantElements() {
+    this.shadowRoot.querySelectorAll("hui-card-picker, hui-card-element-editor").forEach((element) => {
+      element.hass = this._hass;
+      element.lovelace = this._lovelace;
+    });
+  }
+}
+
+const EXPANDER_SCROLL_EDITOR_SCHEMA = [
+  {
+    type: "expandable",
+    label: "Expander Card Settings",
+    icon: "mdi:arrow-down-bold-box-outline",
+    schema: [
+      {
+        name: "title",
+        label: "Title",
+        selector: { text: {} },
+      },
+      {
+        name: "icon",
+        label: "Icon",
+        selector: { icon: {} },
+      },
+      {
+        type: "expandable",
+        label: "Expander control",
+        icon: "mdi:cog-outline",
+        schema: [
+          {
+            type: "grid",
+            schema: [
+              {
+                name: "expanded",
+                label: "Start expanded",
+                selector: { boolean: {} },
+              },
+              {
+                name: "collapsed-scroll",
+                label: "Scroll while collapsed",
+                selector: { boolean: {} },
+              },
+              {
+                name: "collapsed-min-height",
+                label: "Collapsed minimum height",
+                selector: { text: {} },
+              },
+              {
+                name: "transition-duration",
+                label: "Animation duration",
+                selector: { text: {} },
+              },
+              {
+                name: "expand-id",
+                label: "LocalStorage ID",
+                selector: { text: {} },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: "expandable",
+        label: "Expander styling",
+        icon: "mdi:palette-swatch",
+        schema: [
+          {
+            type: "grid",
+            schema: [
+              {
+                name: "icon-rotate-degree",
+                label: "Default chevron rotation",
+                selector: { text: {} },
+              },
+              {
+                name: "button-background",
+                label: "Button background color",
+                selector: { text: {} },
+              },
+              {
+                name: "clear",
+                label: "Clear border and background",
+                selector: { boolean: {} },
+              },
+              {
+                name: "gap",
+                label: "Gap",
+                selector: { text: {} },
+              },
+              {
+                name: "padding",
+                label: "Padding",
+                selector: { text: {} },
+              },
+              {
+                name: "top-padding",
+                label: "Space above title",
+                selector: { text: {} },
+              },
+              {
+                name: "card-width",
+                label: "Card width",
+                selector: { text: {} },
+              },
+              {
+                name: "max-width",
+                label: "Maximum width",
+                selector: { text: {} },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: "expandable",
+        label: "Card styling",
+        icon: "mdi:palette-swatch-outline",
+        schema: [
+          {
+            type: "grid",
+            schema: [
+              {
+                name: "child-padding",
+                label: "Card padding",
+                selector: { text: {} },
+              },
+              {
+                name: "clear-children",
+                label: "Clear card borders and backgrounds",
+                selector: { boolean: {} },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: "expandable",
+        label: "Title card",
+        icon: "mdi:subtitles-outline",
+        schema: [
+          {
+            name: "title-card",
+            label: "Title card configuration",
+            selector: { object: {} },
+          },
+          {
+            type: "grid",
+            schema: [
+              {
+                name: "title-card-button-overlay",
+                label: "Overlay expand button on title card",
+                selector: { boolean: {} },
+              },
+              {
+                name: "title-card-padding",
+                label: "Title card padding",
+                selector: { text: {} },
+              },
+              {
+                name: "overlay-margin",
+                label: "Overlay margin",
+                selector: { text: {} },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+];
+
+async function defineExpanderScrollCardEditor() {
+  if (customElements.get(EDITOR_TAG)) return;
+  for (let attempt = 0; attempt < 50 && typeof window.loadCardHelpers !== "function"; attempt += 1) {
+    await new Promise((resolve) => window.setTimeout(resolve, 100));
+  }
+  if (typeof window.loadCardHelpers !== "function") {
+    throw new Error("Home Assistant card helpers are unavailable");
+  }
+
+  const helpers = await window.loadCardHelpers();
+  const verticalStackCard = helpers.createCardElement({ type: "vertical-stack", cards: [] });
+  await customElements.whenDefined("hui-vertical-stack-card");
+  const verticalStackEditor = await verticalStackCard.constructor.getConfigElement();
+  const VerticalStackEditor = verticalStackEditor.constructor;
+
+  class ExpanderScrollCardSchemaEditor extends VerticalStackEditor {
+    constructor() {
+      super();
+      this._computeLabelCallback = (item) => item.label ?? item.name ?? "";
+      this._valueChanged = this._schemaValueChanged.bind(this);
+    }
+
+    setConfig(config) {
+      this._config = cloneConfig(config || ExpanderScrollCard.getStubConfig());
+      if (!Array.isArray(this._config.cards)) this._config.cards = [];
+    }
+
+    get _schema() {
+      return EXPANDER_SCROLL_EDITOR_SCHEMA;
+    }
+
+    set _schema(_value) {
+      // The vertical-stack editor may assign its own schema; this card always
+      // uses the Expander Scroll Card schema above.
+    }
+
+    _schemaValueChanged(event) {
+      const formValue = event.detail?.value || {};
+      const config = { ...this._config, ...cloneConfig(formValue) };
+      for (const [key, value] of Object.entries(config)) {
+        if ((value === "" || value === null || value === undefined) && key !== "title") {
+          delete config[key];
+        }
+      }
+      if (!Array.isArray(config.cards)) config.cards = [];
+      this._config = config;
+      this.dispatchEvent(
+        new CustomEvent("config-changed", {
+          detail: { config: cloneConfig(this._config) },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    }
+  }
+
+  customElements.define(EDITOR_TAG, ExpanderScrollCardSchemaEditor);
+}
+
+defineExpanderScrollCardEditor().catch((error) => {
+  console.warn("Expander Scroll Card could not load the native schema editor; using fallback editor.", error);
+  if (!customElements.get(EDITOR_TAG)) customElements.define(EDITOR_TAG, ExpanderScrollCardNativeEditor);
+});
 if (!customElements.get(CARD_TAG)) customElements.define(CARD_TAG, ExpanderScrollCard);
 
 window.customCards = window.customCards || [];

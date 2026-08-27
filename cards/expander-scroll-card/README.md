@@ -15,6 +15,10 @@ card is collapsed.
 - Existing Expander Card concepts remain available: child cards, title cards,
   clear backgrounds, overlay toggle, gaps, padding, saved state, and nesting.
 - Includes a graphical editor for settings, title card, and child cards.
+- The visual editor mirrors the newer Expander Card's accordion-style native
+  Home Assistant settings and card-list workflow.
+- The current editor uses Home Assistant's expandable form schema, searchable
+  MDI icon selector, and native stack-card picker with clipboard paste support.
 - Supports native Home Assistant card visibility and Sections layout settings.
 
 ## Installation
@@ -24,7 +28,7 @@ card is collapsed.
 3. Add the following resource as a **JavaScript module**:
 
    ```text
-   /local/expander-scroll-card/expander-scroll-card.js?v=1.0.5
+   /local/expander-scroll-card/expander-scroll-card.js?v=1.2.2
    ```
 
 4. Refresh the dashboard and add **Expander Scroll Card**.
@@ -163,6 +167,7 @@ cards:
 | `button-background` | CSS color | `transparent` | Toggle-button background. |
 | `gap` | CSS size | `0.6em` | Gap between child cards. |
 | `padding` | CSS size | `1em` | Outer card padding. |
+| `top-padding` | CSS size | `0px` | Independent space above the title/header. `header-top-padding` and `top_padding` are accepted aliases. |
 | `child-padding` | CSS size | `0.5em` | Padding inside the child viewport. |
 | `title-card` | card | unset | Lovelace card used in place of the text title. |
 | `title-card-padding` | CSS size | `0px` | Padding around the title card. |
