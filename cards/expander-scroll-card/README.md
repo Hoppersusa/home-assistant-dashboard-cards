@@ -24,7 +24,7 @@ card is collapsed.
 3. Add the following resource as a **JavaScript module**:
 
    ```text
-   /local/expander-scroll-card/expander-scroll-card.js?v=1.0.0
+   /local/expander-scroll-card/expander-scroll-card.js?v=1.0.4
    ```
 
 4. Refresh the dashboard and add **Expander Scroll Card**.
@@ -85,6 +85,22 @@ cards:
 `expand-id` stores the expanded/collapsed state in the browser's local storage.
 Each expander should use a unique ID.
 
+## Custom toggle icon
+
+Set `icon` to replace the default chevron with any Home Assistant MDI icon.
+Explicitly configured icons remain stationary. Only the built-in chevron
+rotates while the card is expanded.
+
+```yaml
+type: custom:expander-scroll-card
+title: Lighting
+icon: mdi:lightbulb-outline
+cards:
+  - type: entities
+    entities:
+      - light.living_room
+```
+
 ## Title card and overlay toggle
 
 ```yaml
@@ -134,6 +150,8 @@ cards:
 | --- | --- | --- | --- |
 | `type` | string | required | `custom:expander-scroll-card` |
 | `title` | string | `Expander` | Header text when no title card is configured. |
+| `icon` | string | `mdi:chevron-down` | Toggle-button MDI icon. |
+| `icon-rotate-degree` | CSS angle | `180deg` | Expanded rotation applied only to the built-in chevron. |
 | `cards` | list | `[]` | Child Lovelace card configurations. |
 | `expanded` | boolean | `false` | Initial expanded state. |
 | `expand-id` | string | unset | Unique local-storage key for saved state. |
@@ -151,7 +169,7 @@ cards:
 | `title-card-button-overlay` | boolean | `false` | Overlay the toggle on the title card. |
 | `overlay-margin` | CSS size | `2em` | Toggle offset when overlay mode is enabled. |
 | `card-width` | CSS size | `100%` | Card width within its dashboard column. |
-| `max-width` | CSS size | `none` | Optional maximum width. |
+| `max-width` | CSS size | `100%` | Optional maximum width, capped to the available mobile width. |
 
 Underscore aliases `collapsed_min_height`, `collapsed_scroll`, `card_width`,
 and `max_width` are accepted for compatibility with generated configurations.
@@ -214,4 +232,3 @@ Apache License 2.0. See `LICENSE` and `NOTICE`.
 
 The original Expander Card is copyright 2021–2022 Peter Repukat / FlatspotSoftware.
 Modified files are prominently identified in their source headers.
-

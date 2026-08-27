@@ -12,10 +12,12 @@
 
 const CARD_TAG = "expander-scroll-card";
 const EDITOR_TAG = "expander-scroll-card-editor";
-const VERSION = "1.0.0";
+const VERSION = "1.0.4";
 
 const DEFAULT_CONFIG = Object.freeze({
   title: "Expander",
+  icon: "mdi:chevron-down",
+  "icon-rotate-degree": "180deg",
   clear: false,
   "clear-children": false,
   expanded: false,
@@ -30,7 +32,7 @@ const DEFAULT_CONFIG = Object.freeze({
   "collapsed-scroll": false,
   "transition-duration": "0.5s",
   "card-width": "100%",
-  "max-width": "none",
+  "max-width": "100%",
 });
 
 function cloneConfig(value) {
@@ -58,6 +60,7 @@ function escapeHtml(value) {
 }
 
 function normalizeConfig(config) {
+  const hasSpecifiedIcon = typeof config.icon === "string" && Boolean(config.icon.trim());
   const collapsedMinHeight =
     config["collapsed-min-height"] ?? config.collapsed_min_height ?? config["collapsed-height"];
   const collapsedScroll = config["collapsed-scroll"] ?? config.collapsed_scroll;
@@ -67,6 +70,15 @@ function normalizeConfig(config) {
   return {
     ...DEFAULT_CONFIG,
     ...config,
+    icon:
+      hasSpecifiedIcon
+        ? config.icon.trim()
+        : DEFAULT_CONFIG.icon,
+    "uses-default-icon": !hasSpecifiedIcon,
+    "icon-rotate-degree":
+      typeof config["icon-rotate-degree"] === "string" && config["icon-rotate-degree"].trim()
+        ? config["icon-rotate-degree"].trim()
+        : DEFAULT_CONFIG["icon-rotate-degree"],
     clear: parseBoolean(config.clear, false),
     "clear-children": parseBoolean(config["clear-children"], false),
     expanded: parseBoolean(config.expanded, false),
@@ -75,7 +87,10 @@ function normalizeConfig(config) {
     "collapsed-min-height": cssLength(collapsedMinHeight, DEFAULT_CONFIG["collapsed-min-height"]),
     "transition-duration": cssLength(config["transition-duration"], DEFAULT_CONFIG["transition-duration"]),
     "card-width": cssLength(cardWidth, DEFAULT_CONFIG["card-width"]),
-    "max-width": cssLength(maxWidth, DEFAULT_CONFIG["max-width"]),
+    "max-width":
+      typeof maxWidth === "string" && maxWidth.trim().toLowerCase() === "none"
+        ? DEFAULT_CONFIG["max-width"]
+        : cssLength(maxWidth, DEFAULT_CONFIG["max-width"]),
     gap: cssLength(config.gap, DEFAULT_CONFIG.gap),
     padding: cssLength(config.padding, DEFAULT_CONFIG.padding),
     "child-padding": cssLength(config["child-padding"], DEFAULT_CONFIG["child-padding"]),
@@ -97,6 +112,8 @@ class ExpanderScrollCard extends HTMLElement {
     this._childCards = [];
     this._titleCard = null;
     this._resizeObserver = null;
+    this._lastObservedWidth = null;
+    this._resizeFrame = null;
     this._transitionTimer = null;
   }
 
@@ -107,6 +124,7 @@ class ExpanderScrollCard extends HTMLElement {
   static getStubConfig() {
     return {
       title: "Expander",
+      icon: "mdi:chevron-down",
       "collapsed-min-height": "0px",
       "collapsed-scroll": false,
       cards: [{ type: "entities", entities: [] }],
@@ -147,6 +165,7 @@ class ExpanderScrollCard extends HTMLElement {
 
   disconnectedCallback() {
     this._resizeObserver?.disconnect();
+    cancelAnimationFrame(this._resizeFrame);
     clearTimeout(this._transitionTimer);
   }
 
@@ -197,8 +216,8 @@ class ExpanderScrollCard extends HTMLElement {
       <style>
         :host {
           display: block;
-          width: var(--expander-card-width, 100%);
-          max-width: min(100%, var(--expander-max-width, none));
+          width: min(100%, var(--expander-card-width, 100%));
+          max-width: min(100%, var(--expander-max-width, 100%));
           margin-inline: auto;
           container-type: inline-size;
         }
@@ -259,7 +278,7 @@ class ExpanderScrollCard extends HTMLElement {
         }
         .title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
         .chevron { --mdc-icon-size: 24px; flex: 0 0 auto; transition: transform 350ms ease; }
-        .chevron.flipped { transform: rotate(180deg); }
+        .chevron.flipped { transform: rotate(var(--expander-icon-rotate-degree, 180deg)); }
         .viewport {
           display: grid;
           min-height: 0;
@@ -291,9 +310,18 @@ class ExpanderScrollCard extends HTMLElement {
         }
         .children-container {
           display: grid;
+          grid-template-columns: minmax(0, 1fr);
           gap: var(--expander-gap);
           min-width: 0;
+          width: 100%;
+          max-width: 100%;
           padding: var(--child-padding);
+        }
+        .children-container > * {
+          display: block;
+          min-width: 0;
+          width: 100%;
+          max-width: 100%;
         }
         .children-container > :first-child { margin-top: var(--expander-gap); }
         .child-error {
@@ -333,7 +361,7 @@ class ExpanderScrollCard extends HTMLElement {
           ${hasTitleCard ? titleMarkup : ""}
           <button class="toggle ${overlay ? "overlay" : ""}" type="button" aria-controls="expander-viewport">
             ${hasTitleCard ? "" : titleMarkup}
-            <ha-icon class="chevron" icon="mdi:chevron-down"></ha-icon>
+            <ha-icon class="chevron" icon="${escapeHtml(config.icon)}"></ha-icon>
           </button>
         </div>
         <div id="expander-viewport" class="viewport">
@@ -352,6 +380,7 @@ class ExpanderScrollCard extends HTMLElement {
     this.style.setProperty("--collapsed-min-height", config["collapsed-min-height"]);
     this.style.setProperty("--expander-duration", config["transition-duration"]);
     this.style.setProperty("--expander-button-background", config["button-background"] || "transparent");
+    this.style.setProperty("--expander-icon-rotate-degree", config["icon-rotate-degree"]);
     this.style.setProperty("--overlay-margin", config["overlay-margin"]);
 
     this.shadowRoot.querySelector("button.toggle").addEventListener("click", () => this._toggle());
@@ -408,9 +437,22 @@ class ExpanderScrollCard extends HTMLElement {
     }
 
     this._resizeObserver?.disconnect();
-    this._resizeObserver = new ResizeObserver(() => this._updateScrollableHint());
+    this._resizeObserver = new ResizeObserver((entries) => {
+      this._updateScrollableHint();
+      const hostEntry = entries.find((entry) => entry.target === this);
+      if (!hostEntry) return;
+      const width = hostEntry.contentRect.width;
+      if (this._lastObservedWidth !== null && Math.abs(width - this._lastObservedWidth) < 0.5) return;
+      this._lastObservedWidth = width;
+      cancelAnimationFrame(this._resizeFrame);
+      this._resizeFrame = requestAnimationFrame(() => this._notifyChildrenResized());
+    });
+    this._resizeObserver.observe(this);
     this._resizeObserver.observe(childrenContainer);
-    requestAnimationFrame(() => this._updateScrollableHint());
+    requestAnimationFrame(() => {
+      this._updateScrollableHint();
+      this._notifyChildrenResized();
+    });
   }
 
   _applyClearStyle(card) {
@@ -432,6 +474,13 @@ class ExpanderScrollCard extends HTMLElement {
     this._applyExpandedState(true);
   }
 
+  _notifyChildrenResized() {
+    const cards = this._titleCard ? [this._titleCard, ...this._childCards] : this._childCards;
+    cards.forEach((card) => {
+      card.dispatchEvent(new Event("iron-resize", { bubbles: true, composed: true }));
+    });
+  }
+
   _applyExpandedState(announce) {
     const card = this.shadowRoot.querySelector("ha-card");
     const viewport = this.shadowRoot.querySelector(".viewport");
@@ -445,14 +494,15 @@ class ExpanderScrollCard extends HTMLElement {
     viewport.classList.toggle("expanded", this._expanded);
     viewport.classList.toggle("collapsed", !this._expanded);
     viewport.classList.toggle("scrollable", !this._expanded && scrollable);
-    chevron.classList.toggle("flipped", this._expanded);
+    chevron.classList.toggle("flipped", this._expanded && this._config["uses-default-icon"]);
     button.setAttribute("aria-expanded", String(this._expanded));
     viewportInner.tabIndex = !this._expanded && scrollable ? 0 : -1;
     this._updateScrollableHint();
 
     clearTimeout(this._transitionTimer);
     this._transitionTimer = setTimeout(() => {
-      this.dispatchEvent(new Event("ll-rebuild", { bubbles: true, composed: true }));
+      this._notifyChildrenResized();
+      this.dispatchEvent(new Event("iron-resize", { bubbles: true, composed: true }));
     }, announce ? 520 : 0);
   }
 
@@ -589,6 +639,8 @@ class ExpanderScrollCardEditor extends HTMLElement {
           ? `<p class="note"><strong>Collapsed preview:</strong> set a non-zero minimum height to leave part of the child area visible. Enable scrolling to make that collapsed preview independently scrollable.</p>
              <div class="grid">
                <div class="wide">${text("title", "Title")}</div>
+               ${text("icon", "Toggle icon", "Example: mdi:chevron-down or mdi:lightbulb")}
+               ${text("icon-rotate-degree", "Default chevron rotation", "Applied only when no custom icon is specified")}
                ${text("collapsed-min-height", "Collapsed minimum height", "Examples: 0px, 120px, 30vh")}
                ${text("transition-duration", "Animation duration", "Example: 0.5s")}
                ${checkbox("collapsed-scroll", "Scroll content while collapsed")}
