@@ -1,5 +1,8 @@
 ﻿# Home Assistant Dashboard Cards
 
+![TeamSpeak 3 Card preview](cards/teamspeak3-card/preview.png)
+
+
 Custom Home Assistant dashboard cards adapted from useful MagicMirror modules.
 
 ## Included packages
