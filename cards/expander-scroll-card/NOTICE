@@ -1,0 +1,15 @@
+Expander Scroll Card
+
+This product includes software derived from lovelace-expander-card:
+https://github.com/Alia5/lovelace-expander-card
+
+Original work copyright 2021-2022 Peter Repukat - FlatspotSoftware.
+Licensed under the Apache License, Version 2.0.
+
+Modifications:
+- Added a configurable collapsed child-card viewport.
+- Added optional vertical scrolling while collapsed.
+- Added scroll affordance, touch/keyboard accessibility, and overscroll containment.
+- Reimplemented the runtime without a Svelte build dependency.
+- Updated the graphical editor and Home Assistant layout support.
+

@@ -1,0 +1,16 @@
+{
+  "name": "expander-scroll-card",
+  "version": "1.0.0",
+  "description": "A Home Assistant expander card with a configurable, scrollable collapsed preview.",
+  "type": "module",
+  "private": true,
+  "files": [
+    "expander-scroll-card.js",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "hacs.json",
+    "preview.svg"
+  ]
+}
+

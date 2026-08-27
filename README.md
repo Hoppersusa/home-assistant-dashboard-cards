@@ -10,6 +10,7 @@ Custom Home Assistant dashboard cards adapted from useful MagicMirror modules.
 | [TeamSpeak 3 Card](cards/teamspeak3-card/) | Secure ServerQuery integration and a Lovelace card showing connected voice clients. |
 | [Worldclock Sun Card](cards/worldclock-sun-card/) | Local time and date, bundled SVG country flags, and location-aware animated sun/moon artwork. |
 | [Earthquake Alert Card](cards/earthquake-alert-card/) | USGS/native Home Assistant earthquake alerts using ordered magnitude-and-distance thresholds. |
+| [Expander Scroll Card](cards/expander-scroll-card/) | Collapsible child-card container with a configurable, scrollable collapsed preview. |
 
 Each package contains its own installation guide, configuration examples, attribution, and license information.
 
