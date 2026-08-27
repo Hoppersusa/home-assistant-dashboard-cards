@@ -24,7 +24,7 @@ card is collapsed.
 3. Add the following resource as a **JavaScript module**:
 
    ```text
-   /local/expander-scroll-card/expander-scroll-card.js?v=1.0.4
+   /local/expander-scroll-card/expander-scroll-card.js?v=1.0.5
    ```
 
 4. Refresh the dashboard and add **Expander Scroll Card**.
@@ -158,7 +158,7 @@ cards:
 | `collapsed-min-height` | CSS size | `0px` | Visible child viewport while collapsed. Numeric values are pixels. |
 | `collapsed-scroll` | boolean | `false` | Permit vertical scrolling inside the collapsed viewport. |
 | `transition-duration` | CSS time | `0.5s` | Expand/collapse animation duration. |
-| `clear` | boolean | `false` | Remove the outer background, border, and shadow. |
+| `clear` | boolean | `false` | Remove the outer background, border, shadow, and horizontal inset so content can use the full column width. |
 | `clear-children` | boolean | `false` | Remove backgrounds, borders, and shadows from child cards. |
 | `button-background` | CSS color | `transparent` | Toggle-button background. |
 | `gap` | CSS size | `0.6em` | Gap between child cards. |

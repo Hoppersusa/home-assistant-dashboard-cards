@@ -12,7 +12,7 @@
 
 const CARD_TAG = "expander-scroll-card";
 const EDITOR_TAG = "expander-scroll-card-editor";
-const VERSION = "1.0.4";
+const VERSION = "1.0.5";
 
 const DEFAULT_CONFIG = Object.freeze({
   title: "Expander",
@@ -230,7 +230,14 @@ class ExpanderScrollCard extends HTMLElement {
           overflow: visible;
           transition: background var(--expander-duration) ease, border-color var(--expander-duration) ease;
         }
-        ha-card.clear { background: transparent; border-style: none; box-shadow: none; }
+        ha-card.clear {
+          padding-inline: 0;
+          background: transparent;
+          border-style: none;
+          box-shadow: none;
+        }
+        ha-card.clear button.toggle { margin-inline: 0; }
+        ha-card.clear .children-container { padding-inline: 0; }
         .header-row {
           position: relative;
           display: flex;
