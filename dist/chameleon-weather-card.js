@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.2.0";
+const CARD_VERSION = "1.2.1";
 const CARD_TAG = "chameleon-weather-card";
 const CARD_ASSET_ROOT = new URL(".", import.meta.url).href;
 
@@ -801,3 +801,4 @@ if (!window.customCards.some((card) => card.type === CARD_TAG)) {
 }
 
 console.info(`%c CHAMELEON-WEATHER-CARD %c v${CARD_VERSION} `, "color: white; background: #76b900; font-weight: 700;", "color: #76b900; background: transparent;");
+

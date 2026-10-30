@@ -1,0 +1,34 @@
+name: Test Chameleon Weather Card
+
+on:
+  push:
+    paths:
+      - "cards/chameleon-weather-card/**"
+      - "dist/chameleon-weather-card.js"
+      - "dist/home-assistant-dashboard-cards.js"
+      - "dist/images/**"
+      - ".github/workflows/test-chameleon-weather-card.yml"
+  pull_request:
+    paths:
+      - "cards/chameleon-weather-card/**"
+      - "dist/chameleon-weather-card.js"
+      - "dist/home-assistant-dashboard-cards.js"
+      - "dist/images/**"
+      - ".github/workflows/test-chameleon-weather-card.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Run Chameleon Weather Card regression tests
+        run: node --test cards/chameleon-weather-card/tests/*.test.mjs
+
