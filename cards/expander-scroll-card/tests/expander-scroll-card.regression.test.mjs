@@ -27,7 +27,7 @@ function loadFunction(name) {
 
 test("source and HACS distribution stay byte-identical", { skip: !hasDistribution }, () => {
   assert.equal(distribution, source);
-  assert.match(source, /const VERSION = "1\\.2\\.4";/);
+  assert.match(source, /const VERSION = "1\.2\.4";/);
 });
 
 test("no scrollbar means no reserved width", () => {
@@ -41,7 +41,7 @@ test("a real scrollbar is compensated without allowing a negative width", () => 
   const calculate = loadFunction("calculateScrollbarCompensation");
   assert.equal(calculate(true, 500, 485), 15);
   assert.equal(calculate(true, 485, 500), 0);
-  assert.match(source, /padding-inline-end: var\\(--expanded-scrollbar-compensation, 0px\\);/);
+  assert.match(source, /padding-inline-end: var\(--expanded-scrollbar-compensation, 0px\);/);
 });
 
 test("nested card-updated events are contained and listeners are cleaned up", () => {
@@ -49,6 +49,7 @@ test("nested card-updated events are contained and listeners are cleaned up", ()
   let stopCount = 0;
   contain({ stopPropagation: () => { stopCount += 1; } });
   assert.equal(stopCount, 1);
-  assert.match(source, /addEventListener\\("card-updated", containNestedCardUpdated\\);/);
-  assert.match(source, /removeEventListener\\("card-updated", containNestedCardUpdated\\);/);
+  assert.match(source, /addEventListener\("card-updated", containNestedCardUpdated\);/);
+  assert.match(source, /removeEventListener\("card-updated", containNestedCardUpdated\);/);
 });
+
