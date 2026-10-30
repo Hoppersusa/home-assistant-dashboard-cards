@@ -1,0 +1,27 @@
+name: Test Expander Scroll Card
+
+on:
+  push:
+    paths:
+      - "cards/expander-scroll-card/**"
+      - "dist/expander-scroll-card.js"
+      - ".github/workflows/test-expander-scroll-card.yml"
+  pull_request:
+    paths:
+      - "cards/expander-scroll-card/**"
+      - "dist/expander-scroll-card.js"
+      - ".github/workflows/test-expander-scroll-card.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: node --test cards/expander-scroll-card/tests/*.test.mjs
