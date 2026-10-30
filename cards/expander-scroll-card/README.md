@@ -32,7 +32,7 @@ card is collapsed.
 3. Add the following resource as a **JavaScript module**:
 
    ```text
-   /local/expander-scroll-card/expander-scroll-card.js?v=1.2.5
+   /local/expander-scroll-card/expander-scroll-card.js?v=1.2.6
    ```
 
 4. Refresh the dashboard and add **Expander Scroll Card**.

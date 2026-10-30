@@ -12,7 +12,7 @@
 
 const CARD_TAG = "expander-scroll-card";
 const EDITOR_TAG = "expander-scroll-card-editor";
-const VERSION = "1.2.5";
+const VERSION = "1.2.6";
 
 const DEFAULT_CONFIG = Object.freeze({
   title: "Expander",
@@ -58,6 +58,14 @@ function calculateScrollbarCompensation(canScroll, offsetWidth, clientWidth) {
 
 function containNestedCardUpdated(event) {
   event.stopPropagation();
+}
+
+function configureNestedCard(card, config, hass) {
+  card.hass = hass;
+  card.preview = false;
+  card.config = config;
+  card.load();
+  return card;
 }
 
 function escapeHtml(value) {
@@ -420,24 +428,26 @@ class ExpanderScrollCard extends HTMLElement {
     this._childCards = [];
     this._titleCard = null;
 
-    let helpers;
     try {
-      if (typeof window.loadCardHelpers !== "function") throw new Error("Home Assistant card helpers are unavailable");
-      helpers = await window.loadCardHelpers();
+      await customElements.whenDefined("hui-card");
     } catch (error) {
       if (generation === this._buildGeneration) {
-        childrenContainer.innerHTML = `<div class="child-error">${escapeHtml(error.message || error)}</div>`;
+        childrenContainer.innerHTML = `<div class="child-error">Home Assistant card wrapper: ${escapeHtml(
+          error.message || error,
+        )}</div>`;
       }
       return;
     }
     if (generation !== this._buildGeneration) return;
 
+    const createNestedCard = (cardConfig) =>
+      configureNestedCard(document.createElement("hui-card"), cloneConfig(cardConfig), this._hass);
+
     if (this._config["title-card"]) {
       const titleContainer = this.shadowRoot.querySelector("#title-card-container");
       if (titleContainer) {
         try {
-          const titleCard = helpers.createCardElement(this._config["title-card"]);
-          titleCard.hass = this._hass;
+          const titleCard = createNestedCard(this._config["title-card"]);
           titleContainer.replaceChildren(titleCard);
           this._titleCard = titleCard;
           this._applyClearStyle(titleCard);
@@ -449,8 +459,7 @@ class ExpanderScrollCard extends HTMLElement {
 
     for (const cardConfig of this._config.cards) {
       try {
-        const card = helpers.createCardElement(cardConfig);
-        card.hass = this._hass;
+        const card = createNestedCard(cardConfig);
         childrenContainer.append(card);
         this._childCards.push(card);
         this._applyClearStyle(card);
@@ -483,15 +492,11 @@ class ExpanderScrollCard extends HTMLElement {
 
   _applyClearStyle(card) {
     if (!this._config["clear-children"]) return;
-    const install = () => {
-      if (!card.shadowRoot || card.shadowRoot.querySelector("style[data-expander-scroll-clear]")) return;
-      const style = document.createElement("style");
-      style.dataset.expanderScrollClear = "";
-      style.textContent = "ha-card{background:transparent!important;border-style:none!important;box-shadow:none!important}";
-      card.shadowRoot.append(style);
-    };
-    install();
-    requestAnimationFrame(install);
+    card.style.setProperty("--ha-card-background", "transparent");
+    card.style.setProperty("--ha-card-box-shadow", "none");
+    card.style.setProperty("--ha-card-border-color", "transparent");
+    card.style.setProperty("--ha-card-border-width", "0px");
+    card.style.setProperty("--ha-card-backdrop-filter", "none");
   }
 
   _toggle() {

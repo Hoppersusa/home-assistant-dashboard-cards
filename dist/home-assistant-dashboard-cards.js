@@ -4,5 +4,5 @@ import "./chameleon-weather-card.js";
 import "./teamspeak3-card.js";
 import "./worldclock-sun-card.js";
 import "./earthquake-alert-card.js";
-import "./expander-scroll-card.js?v=1.2.5";
+import "./expander-scroll-card.js?v=1.2.6";
 

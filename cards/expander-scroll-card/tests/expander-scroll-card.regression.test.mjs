@@ -27,7 +27,7 @@ function loadFunction(name) {
 
 test("source and HACS distribution stay byte-identical", { skip: !hasDistribution }, () => {
   assert.equal(distribution, source);
-  assert.match(source, /const VERSION = "1\.2\.5";/);
+  assert.match(source, /const VERSION = "1\.2\.6";/);
 });
 
 test("no scrollbar means no reserved width", () => {
@@ -51,5 +51,25 @@ test("nested card-updated events are contained and listeners are cleaned up", ()
   assert.equal(stopCount, 1);
   assert.match(source, /addEventListener\("card-updated", containNestedCardUpdated\);/);
   assert.match(source, /removeEventListener\("card-updated", containNestedCardUpdated\);/);
+});
+
+test("nested cards use Home Assistant's lifecycle wrapper", () => {
+  const configure = loadFunction("configureNestedCard");
+  const hass = { states: {} };
+  const config = { type: "entities", entities: [] };
+  let loadCount = 0;
+  const card = { load: () => { loadCount += 1; } };
+
+  assert.equal(configure(card, config, hass), card);
+  assert.equal(card.hass, hass);
+  assert.equal(card.preview, false);
+  assert.equal(card.config, config);
+  assert.equal(loadCount, 1);
+  assert.match(source, /document\.createElement\("hui-card"\)/);
+  const nestedBuilder = source.slice(
+    source.indexOf("async _buildNestedCards"),
+    source.indexOf("  _applyClearStyle", source.indexOf("async _buildNestedCards")),
+  );
+  assert.doesNotMatch(nestedBuilder, /helpers\.createCardElement/);
 });
 
