@@ -21,7 +21,7 @@ A standalone Home Assistant Lovelace card that shows the current time and date a
 
 1. Copy the complete `worldclock-sun-card` folder—including its `flags` directory—into `/config/www/` on your Home Assistant system.
 2. In Home Assistant, go to **Settings → Dashboards → Resources**.
-3. Add `/local/worldclock-sun-card/worldclock-sun-card.js?v=1.4.2` as a **JavaScript module**.
+3. Add `/local/worldclock-sun-card/worldclock-sun-card.js?v=1.4.3` as a **JavaScript module**.
 4. Refresh the dashboard, choose **Add card**, and select **Worldclock Sun Card**.
 
 If the Resources menu is hidden, enable Advanced Mode in your Home Assistant user profile.
@@ -168,3 +168,4 @@ The calculation runs entirely in the browser. NOAA notes that calculated and obs
 MIT
 
 Bundled country SVGs are from [flag-icons v7.5.0](https://github.com/lipis/flag-icons/tree/v7.5.0), copyright Panayiotis Lipiridis and contributors, under the MIT License. The complete third-party license is included as `FLAG-ICONS-LICENSE`.
+

@@ -2,7 +2,7 @@
 // HACS adds this file as the dashboard resource; the imports register each card.
 import "./chameleon-weather-card.js?v=1.2.1";
 import "./teamspeak3-card.js";
-import "./worldclock-sun-card.js";
+import "./worldclock-sun-card.js?v=1.4.3";
 import "./earthquake-alert-card.js";
 import "./expander-scroll-card.js?v=1.2.6";
 

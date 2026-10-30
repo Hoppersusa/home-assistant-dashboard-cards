@@ -1,0 +1,34 @@
+name: Test Worldclock Sun Card
+
+on:
+  push:
+    paths:
+      - "cards/worldclock-sun-card/**"
+      - "dist/worldclock-sun-card.js"
+      - "dist/home-assistant-dashboard-cards.js"
+      - "dist/flags/**"
+      - ".github/workflows/test-worldclock-sun-card.yml"
+  pull_request:
+    paths:
+      - "cards/worldclock-sun-card/**"
+      - "dist/worldclock-sun-card.js"
+      - "dist/home-assistant-dashboard-cards.js"
+      - "dist/flags/**"
+      - ".github/workflows/test-worldclock-sun-card.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Run Worldclock Sun Card regression tests
+        run: node --test cards/worldclock-sun-card/tests/*.test.mjs
+

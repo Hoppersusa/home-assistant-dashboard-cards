@@ -1,6 +1,6 @@
 const CARD_TAG = "worldclock-sun-card";
 const EDITOR_TAG = "worldclock-sun-card-editor";
-const CARD_VERSION = "1.4.2";
+const CARD_VERSION = "1.4.3";
 const CARD_BASE_URL = new URL(".", import.meta.url);
 
 const DEFAULT_CONFIG = Object.freeze({
@@ -259,6 +259,30 @@ function isUsableEntityState(stateObj) {
   );
 }
 
+function shouldRenderForHassChange(previous, next, locations = []) {
+  if (!previous) return true;
+  if (previous === next) return false;
+
+  const previousLocale = previous.locale?.language || previous.language || "";
+  const nextLocale = next?.locale?.language || next?.language || "";
+  if (previousLocale !== nextLocale) return true;
+
+  const previousConfig = previous.config || {};
+  const nextConfig = next?.config || {};
+  if (
+    previousConfig.time_zone !== nextConfig.time_zone ||
+    previousConfig.latitude !== nextConfig.latitude ||
+    previousConfig.longitude !== nextConfig.longitude
+  ) {
+    return true;
+  }
+
+  return locations.some((location) => {
+    const entityId = location?.entity ? String(location.entity) : "";
+    return entityId && previous.states?.[entityId] !== next?.states?.[entityId];
+  });
+}
+
 class WorldclockSunCard extends HTMLElement {
   constructor() {
     super();
@@ -312,8 +336,11 @@ class WorldclockSunCard extends HTMLElement {
   }
 
   set hass(hass) {
+    const previous = this._hass;
     this._hass = hass;
-    this._render();
+    if (this._config && shouldRenderForHassChange(previous, hass, this._config.locations)) {
+      this._render();
+    }
   }
 
   getCardSize() {
@@ -459,7 +486,7 @@ class WorldclockSunCard extends HTMLElement {
             flagUrl
               ? `<img class="flag" src="${escapeHtml(flagUrl)}" alt="${escapeHtml(
                   `${flagCode.toUpperCase()} flag`,
-                )}" title="${escapeHtml(`${flagCode.toUpperCase()} flag`)}" loading="eager" decoding="async">`
+                )}" title="${escapeHtml(`${flagCode.toUpperCase()} flag`)}" loading="eager" decoding="sync">`
               : ""
           }
           <div class="celestial ${solar.state}" title="${escapeHtml(tooltip)}">
@@ -1220,3 +1247,4 @@ export {
   formatZonedTime,
   getSolarState,
 };
+

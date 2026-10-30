@@ -1,6 +1,6 @@
 {
   "name": "worldclock-sun-card",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "A Home Assistant world clock card with local dates and location-aware sun or moon icons.",
   "type": "module",
   "main": "worldclock-sun-card.js",
@@ -21,3 +21,4 @@
     "sunset"
   ]
 }
+
