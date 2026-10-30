@@ -12,7 +12,7 @@
 
 const CARD_TAG = "expander-scroll-card";
 const EDITOR_TAG = "expander-scroll-card-editor";
-const VERSION = "1.2.2";
+const VERSION = "1.2.3";
 
 const DEFAULT_CONFIG = Object.freeze({
   title: "Expander",
@@ -300,9 +300,12 @@ class ExpanderScrollCard extends HTMLElement {
           min-width: 0;
           min-height: 0;
           overscroll-behavior: contain;
-          scrollbar-gutter: stable;
+          scrollbar-gutter: auto;
         }
-        .viewport.expanded .viewport-inner { overflow: visible; }
+        .viewport.expanded .viewport-inner {
+          overflow: visible;
+          padding-inline-end: var(--expanded-scrollbar-compensation, 0px);
+        }
         .viewport.collapsed .viewport-inner {
           height: var(--collapsed-min-height);
           min-height: var(--collapsed-min-height);
@@ -393,6 +396,7 @@ class ExpanderScrollCard extends HTMLElement {
     this.style.setProperty("--expander-button-background", config["button-background"] || "transparent");
     this.style.setProperty("--expander-icon-rotate-degree", config["icon-rotate-degree"]);
     this.style.setProperty("--overlay-margin", config["overlay-margin"]);
+    this.style.setProperty("--expanded-scrollbar-compensation", "0px");
 
     this.shadowRoot.querySelector("button.toggle").addEventListener("click", () => this._toggle());
     this._applyExpandedState(false);
@@ -480,6 +484,7 @@ class ExpanderScrollCard extends HTMLElement {
   }
 
   _toggle() {
+    if (!this._expanded) this._updateScrollableHint();
     this._expanded = !this._expanded;
     this._writeExpandedState();
     this._applyExpandedState(true);
@@ -523,6 +528,10 @@ class ExpanderScrollCard extends HTMLElement {
     if (!card || !inner) return;
     const canScroll =
       !this._expanded && this._config["collapsed-scroll"] && inner.scrollHeight > inner.clientHeight + 2;
+    if (!this._expanded) {
+      const scrollbarWidth = canScroll ? Math.max(0, inner.offsetWidth - inner.clientWidth) : 0;
+      this.style.setProperty("--expanded-scrollbar-compensation", `${scrollbarWidth}px`);
+    }
     card.classList.toggle("can-scroll", canScroll);
   }
 }
