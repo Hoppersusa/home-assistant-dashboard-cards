@@ -27,7 +27,7 @@ function loadFunction(name) {
 
 test("source and HACS distribution stay byte-identical", { skip: !hasDistribution }, () => {
   assert.equal(distribution, source);
-  assert.match(source, /const VERSION = "1\.2\.4";/);
+  assert.match(source, /const VERSION = "1\.2\.5";/);
 });
 
 test("no scrollbar means no reserved width", () => {

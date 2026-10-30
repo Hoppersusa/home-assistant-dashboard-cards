@@ -12,7 +12,7 @@
 
 const CARD_TAG = "expander-scroll-card";
 const EDITOR_TAG = "expander-scroll-card-editor";
-const VERSION = "1.2.4";
+const VERSION = "1.2.5";
 
 const DEFAULT_CONFIG = Object.freeze({
   title: "Expander",
@@ -1438,3 +1438,4 @@ console.info(
   "color:white;background:#455a64;font-weight:700",
   "color:#455a64;background:white",
 );
+

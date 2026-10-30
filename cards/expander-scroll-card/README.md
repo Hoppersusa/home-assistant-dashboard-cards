@@ -32,7 +32,7 @@ card is collapsed.
 3. Add the following resource as a **JavaScript module**:
 
    ```text
-   /local/expander-scroll-card/expander-scroll-card.js?v=1.2.4
+   /local/expander-scroll-card/expander-scroll-card.js?v=1.2.5
    ```
 
 4. Refresh the dashboard and add **Expander Scroll Card**.
@@ -241,3 +241,4 @@ Apache License 2.0. See `LICENSE` and `NOTICE`.
 
 The original Expander Card is copyright 2021–2022 Peter Repukat / FlatspotSoftware.
 Modified files are prominently identified in their source headers.
+
