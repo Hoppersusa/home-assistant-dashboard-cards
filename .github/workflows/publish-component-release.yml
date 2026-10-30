@@ -1,0 +1,43 @@
+name: Publish component release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/releases/*.md"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Publish unreleased component notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          shopt -s nullglob
+          for notes_file in .github/releases/*.md; do
+            tag="$(basename "$notes_file" .md)"
+            if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              echo "Release $tag already exists; skipping."
+              continue
+            fi
+
+            title="$(sed -n '1s/^# //p' "$notes_file")"
+            if [[ -z "$title" ]]; then
+              title="$tag"
+            fi
+
+            gh release create "$tag" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "$title" \
+              --notes-file "$notes_file"
+          done
