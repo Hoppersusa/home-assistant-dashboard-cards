@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.2.1";
+const CARD_VERSION = "1.2.2";
 const CARD_TAG = "chameleon-weather-card";
 const CARD_ASSET_ROOT = new URL(".", import.meta.url).href;
 
@@ -746,7 +746,17 @@ class ChameleonWeatherCard extends HTMLElement {
   }
 
   _assetUrl(path) {
-    return new URL(String(path), String(path).startsWith("/") ? window.location.origin : CARD_ASSET_ROOT).href;
+    const value = String(path);
+    const url = new URL(value, value.startsWith("/") ? window.location.origin : CARD_ASSET_ROOT);
+
+    // A previous release could leave a cached 404 for artwork that was not yet
+    // included in the HACS distribution. Version local assets so WebViews do not
+    // keep reusing that negative response after an upgrade.
+    if (!/^(?:https?:|data:|blob:)/i.test(value)) {
+      url.searchParams.set("cw-version", CARD_VERSION);
+    }
+
+    return url.href;
   }
 
   _weatherAsset(value) {

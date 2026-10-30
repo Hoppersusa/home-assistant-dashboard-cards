@@ -180,7 +180,7 @@ take precedence over group keys: `Clear`, `Clouds`, `Rain`, `Snow`, and
 
 Replace the JavaScript file and the `images` directory, then hard-refresh the
 dashboard. If Home Assistant keeps an older resource, temporarily append a
-version query such as `?v=1.2.1` to its resource URL.
+version query such as `?v=1.2.2` to its resource URL.
 
 ## Attribution and license
 
