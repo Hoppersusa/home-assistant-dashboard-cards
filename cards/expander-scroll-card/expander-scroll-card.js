@@ -12,7 +12,7 @@
 
 const CARD_TAG = "expander-scroll-card";
 const EDITOR_TAG = "expander-scroll-card-editor";
-const VERSION = "1.2.3";
+const VERSION = "1.2.4";
 
 const DEFAULT_CONFIG = Object.freeze({
   title: "Expander",
@@ -49,6 +49,15 @@ function cssLength(value, fallback) {
 
 function parseBoolean(value, fallback = false) {
   return typeof value === "boolean" ? value : fallback;
+}
+
+function calculateScrollbarCompensation(canScroll, offsetWidth, clientWidth) {
+  if (!canScroll) return 0;
+  return Math.max(0, Number(offsetWidth) - Number(clientWidth));
+}
+
+function containNestedCardUpdated(event) {
+  event.stopPropagation();
 }
 
 function escapeHtml(value) {
@@ -158,6 +167,7 @@ class ExpanderScrollCard extends HTMLElement {
   }
 
   connectedCallback() {
+    this.shadowRoot.addEventListener("card-updated", containNestedCardUpdated);
     if (!this.shadowRoot.querySelector("ha-card")) {
       this._expanded = this._readExpandedState();
       this._renderShell();
@@ -166,6 +176,7 @@ class ExpanderScrollCard extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this.shadowRoot.removeEventListener("card-updated", containNestedCardUpdated);
     this._resizeObserver?.disconnect();
     cancelAnimationFrame(this._resizeFrame);
     clearTimeout(this._transitionTimer);
@@ -529,7 +540,7 @@ class ExpanderScrollCard extends HTMLElement {
     const canScroll =
       !this._expanded && this._config["collapsed-scroll"] && inner.scrollHeight > inner.clientHeight + 2;
     if (!this._expanded) {
-      const scrollbarWidth = canScroll ? Math.max(0, inner.offsetWidth - inner.clientWidth) : 0;
+      const scrollbarWidth = calculateScrollbarCompensation(canScroll, inner.offsetWidth, inner.clientWidth);
       this.style.setProperty("--expanded-scrollbar-compensation", `${scrollbarWidth}px`);
     }
     card.classList.toggle("can-scroll", canScroll);
