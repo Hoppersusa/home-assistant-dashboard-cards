@@ -10,6 +10,8 @@ card is collapsed.
 - `collapsed-min-height` leaves a visible child-card viewport when collapsed.
 - `collapsed-scroll` makes that collapsed viewport vertically scrollable.
 - A small scroll indicator appears only when additional content is available.
+- Child-card width remains stable when toggling; scrollbar space is compensated
+  only when the collapsed preview actually needs a scrollbar.
 - Touch scrolling, mouse-wheel scrolling, keyboard focus, reduced-motion, and
   overscroll containment are supported.
 - Existing Expander Card concepts remain available: child cards, title cards,
@@ -28,7 +30,7 @@ card is collapsed.
 3. Add the following resource as a **JavaScript module**:
 
    ```text
-   /local/expander-scroll-card/expander-scroll-card.js?v=1.2.2
+   /local/expander-scroll-card/expander-scroll-card.js?v=1.2.3
    ```
 
 4. Refresh the dashboard and add **Expander Scroll Card**.
